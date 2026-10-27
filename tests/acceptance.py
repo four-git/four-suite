@@ -6,17 +6,17 @@ from pathlib import Path
 import tempfile
 import time
 
-root = Path('/opt/four-securitycenter')
-spec = importlib.util.spec_from_file_location('scanner', root / 'src/four_securitycenter.py')
+root = Path('/opt/four-security')
+spec = importlib.util.spec_from_file_location('scanner', root / 'src/four_security.py')
 s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
-cfg = json.loads(Path('/etc/four-securitycenter/scanner.json').read_text())
-cfg['rules'] = '/opt/four-securitycenter/rules/test-rule.yar'
-with tempfile.TemporaryDirectory(prefix='four-securitycenter-test-') as d:
+cfg = json.loads(Path('/etc/four-security/scanner.json').read_text())
+cfg['rules'] = '/opt/four-security/rules/test-rule.yar'
+with tempfile.TemporaryDirectory(prefix='four-security-test-') as d:
     d = Path(d)
     samples = {
         'eicar.txt': b'X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*',
-        'yara.txt': b'FOUR_SECURITYCENTER_YARA_TEST_SAMPLE',
+        'yara.txt': b'FOUR_SECURITY_YARA_TEST_SAMPLE',
         'clean.txt': b'harmless local scanner acceptance fixture'
     }
     report = {}

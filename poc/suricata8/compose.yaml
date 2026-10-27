@@ -1,0 +1,27 @@
+name: four-ids-poc
+services:
+  sensor:
+    image: ${IDS_IMAGE:?Set the validated image digest}
+    container_name: four-ids-poc
+    entrypoint: [suricata]
+    command: [--init-errors-fatal, -c, /etc/suricata/suricata.yaml, -i, eth0, -F, /etc/suricata/capture.bpf]
+    network_mode: host
+    user: '0:0'
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_RAW, NET_ADMIN, SYS_NICE]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 64
+    restart: 'on-failure:3'
+    stop_grace_period: 30s
+    tmpfs: ['/tmp:size=64m,mode=1777', '/run:size=8m']
+    volumes:
+      - /etc/four-security/ids-poc:/etc/suricata:ro
+      - /var/lib/four-security/ids-poc/rules:/var/lib/suricata/rules:ro
+      - /var/lib/four-security/ids-poc/cache:/var/lib/suricata/cache
+      - /var/log/four-security/ids-poc:/var/log/suricata
+    logging:
+      driver: json-file
+      options: {max-size: 5m, max-file: '3'}

@@ -1,0 +1,2 @@
+# Harmless ICMP echo marker. Send only to an address you own.
+alert icmp any any -> any any (msg:"FOUR POC harmless capture validation"; itype:8; content:"FOUR-SURICATA"; sid:1000001; rev:1;)

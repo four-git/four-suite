@@ -1,18 +1,18 @@
 [Unit]
-Description=Four security center containers
+Description=Four security containers
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target
-RequiresMountsFor=/mnt/four-securitycenter/downloads
+RequiresMountsFor=/mnt/four-security/downloads
 StartLimitIntervalSec=600
 StartLimitBurst=3
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-WorkingDirectory=/opt/four-securitycenter
-ExecStart=/usr/bin/python3 /opt/four-securitycenter/suite start
-ExecStop=/usr/bin/python3 /opt/four-securitycenter/suite stop
+WorkingDirectory=/opt/four-security
+ExecStart=/usr/bin/python3 /opt/four-security/suite start
+ExecStop=/usr/bin/python3 /opt/four-security/suite stop
 TimeoutStartSec=180
 Restart=on-failure
 RestartSec=60

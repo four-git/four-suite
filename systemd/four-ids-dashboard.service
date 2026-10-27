@@ -1,0 +1,17 @@
+[Unit]
+Description=Collect sanitized Suricata alerts for the NAS dashboard
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/four-security/src/ids_dashboard.py
+TimeoutStartSec=20
+Nice=15
+CPUQuota=25%
+MemoryMax=128M
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/four-security/ids-dashboard

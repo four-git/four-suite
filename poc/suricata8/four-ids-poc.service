@@ -1,0 +1,18 @@
+[Unit]
+Description=Passive Suricata 8 Pi IDS proof of concept
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/four-security/poc/suricata8
+ExecStart=/usr/bin/docker compose up -d sensor
+ExecStartPost=/bin/bash /opt/four-security/poc/suricata8/wait-ready.sh
+ExecStop=/usr/bin/docker compose stop sensor
+TimeoutStartSec=900
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

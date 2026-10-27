@@ -1,0 +1,6 @@
+[Unit]
+Description=Rotate Suricata POC metadata logs
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/logrotate -s /var/lib/four-security/ids-poc/logrotate.state /opt/four-security/poc/suricata8/logrotate.conf

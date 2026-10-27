@@ -6,8 +6,12 @@ import tempfile
 import time
 import unittest
 from unittest.mock import patch
+import os
 
-spec = importlib.util.spec_from_file_location('scanner', Path(__file__).parents[1] / 'src/four_securitycenter.py')
+if os.name != 'posix':
+    raise unittest.SkipTest('Scanner engine/file-descriptor tests require Linux; reporting tests run on Windows')
+
+spec = importlib.util.spec_from_file_location('scanner', Path(__file__).parents[1] / 'src/four_security.py')
 s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
 

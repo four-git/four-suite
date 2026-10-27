@@ -1,0 +1,57 @@
+%YAML 1.1
+---
+# Bounded Pi POC: passive capture, local test rule only.
+vars:
+  address-groups:
+    HOME_NET: "[192.168.4.0/22]"
+    EXTERNAL_NET: "!$HOME_NET"
+default-log-dir: /var/log/suricata
+default-rule-path: /etc/suricata
+classification-file: /etc/suricata/classification.config
+rule-files:
+  - local.rules
+runmode: workers
+af-packet:
+  - interface: default
+    threads: 1
+    cluster-id: 97
+    cluster-type: cluster_flow
+    defrag: yes
+    use-mmap: yes
+    tpacket-v3: yes
+max-pending-packets: 1024
+flow:
+  memcap: 32mb
+stream:
+  memcap: 32mb
+  reassembly:
+    memcap: 64mb
+stats:
+  enabled: yes
+  interval: 30
+outputs:
+  - fast:
+      enabled: yes
+      filename: fast.log
+      append: yes
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - stats:
+            totals: yes
+            threads: no
+        - dns
+        - tls
+        - http
+  - stats:
+      enabled: no
+logging:
+  default-log-level: notice
+  outputs:
+    - console:
+        enabled: yes
+unix-command:
+  enabled: no

@@ -1,6 +1,6 @@
-name: four-securitycenter
+name: four-security
 x-common: &common
-  image: ${SUITE_IMAGE:-four-securitycenter:local}
+  image: ${SUITE_IMAGE:-four-security:local}
   user: '997:983'
   read_only: true
   cap_drop: [ALL]
@@ -27,23 +27,23 @@ services:
       DISCOVER_INTERVAL_SECONDS: ${DISCOVER_INTERVAL_SECONDS:-0}
     volumes:
       - type: bind
-        source: /mnt/four-securitycenter/downloads
-        target: /mnt/four-securitycenter/downloads
+        source: /mnt/four-security/downloads
+        target: /mnt/four-security/downloads
         read_only: true
         bind: {create_host_path: false, propagation: rprivate}
       - type: bind
-        source: /etc/four-securitycenter/scanner.json
-        target: /etc/four-securitycenter/scanner.json
+        source: /etc/four-security/scanner.json
+        target: /etc/four-security/scanner.json
         read_only: true
         bind: {create_host_path: false}
       - type: bind
         source: ./rules
-        target: /opt/four-securitycenter/rules
+        target: /opt/four-security/rules
         read_only: true
         bind: {create_host_path: false}
       - type: bind
-        source: /var/lib/four-securitycenter
-        target: /var/lib/four-securitycenter
+        source: /var/lib/four-security
+        target: /var/lib/four-security
         bind: {create_host_path: false}
       - type: bind
         source: /var/lib/clamav
@@ -51,15 +51,15 @@ services:
         read_only: true
         bind: {create_host_path: false}
     healthcheck:
-      test: [CMD, python3, /opt/four-securitycenter/src/container_service.py, health]
+      test: [CMD, python3, /opt/four-security/src/container_service.py, health]
       interval: 60s
       timeout: 25s
-      start_period: 60s
+      start_period: 240s
       retries: 2
   signatures:
     <<: *common
     command: [signatures]
-    mem_limit: 256m
+    mem_limit: 1024m
     cpus: 0.25
     volumes:
       - type: bind
@@ -67,7 +67,7 @@ services:
         target: /var/lib/clamav
         bind: {create_host_path: false}
     healthcheck:
-      test: [CMD, python3, /opt/four-securitycenter/src/container_service.py, signature-health]
+      test: [CMD, python3, /opt/four-security/src/container_service.py, signature-health]
       interval: 5m
       timeout: 10s
       start_period: 10m
@@ -85,11 +85,11 @@ services:
     cpus: 0.5
     volumes:
       - type: bind
-        source: /etc/four-securitycenter/suricata
+        source: /etc/four-security/suricata
         target: /etc/suricata
         read_only: true
         bind: {create_host_path: false}
       - type: bind
-        source: /var/log/four-securitycenter/suricata
+        source: /var/log/four-security/suricata
         target: /var/log/suricata
         bind: {create_host_path: false}

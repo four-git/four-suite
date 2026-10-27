@@ -8,6 +8,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify scan and IDS dashboard behavior
+        run: node --test dashboard/tests/*.test.cjs
       - run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Verify numeric ownership survives snapshot/restore
         run: sudo python3 -m unittest discover -s tests -p 'test_suite.py' -v

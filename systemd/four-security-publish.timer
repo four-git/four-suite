@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh four-security NAS report
+
+[Timer]
+OnBootSec=45s
+OnUnitInactiveSec=30s
+AccuracySec=1s
+Unit=four-security-publish.service
+
+[Install]
+WantedBy=timers.target

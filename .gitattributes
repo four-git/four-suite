@@ -9,3 +9,5 @@ Dockerfile text eol=lf
 *.yar text eol=lf
 .gitignore text eol=lf
 .gitattributes text eol=lf
+*.service text eol=lf
+*.timer text eol=lf

@@ -1,0 +1,26 @@
+# Scanner repair deployment — October 22, 2026
+
+## Changes
+
+Discovery now preserves unchanged file verdicts, evidence, attempts and engine fingerprints. Scans prioritize eligible files with the oldest attempts; failed files back off for six hours unless engine/rule/policy versions change. An unfinished batch continues after 30 seconds. The 15-minute batch budget controls admission of the next file; an admitted file retains its engine budgets (20 minutes minimum; YARA receives two minutes per GiB for larger files). Startup queues an initial scan when scheduled scanning is enabled.
+
+The scanner loads signatures once into a local Unix-socket ClamAV daemon, with one worker and no concurrent database reload. The container remains unprivileged, read-only, network-isolated and limited to 1800 MiB / one CPU. Its NAS media bind remains read-only. The signature updater keeps its existing separate access and limits.
+
+YARA's former 8 GB application cap is removed. The deployed engine is YARA-X 1.22.0, using the unchanged production rules. Its official ARM64 CPython ABI3 wheel is pinned by SHA256 066e86533b7143ee96bb80e36b683eb25dad8bc4c064603802d3a8cbbd97f03e; see scripts/install-yara-x.py and https://virustotal.github.io/yara-x/docs/api/python/. The adapter preserves inherited file descriptors, reports rule matches explicitly, and avoids silent truncation at the default per-pattern match cap; process time and container memory limits still fail explicitly. This is full-file evaluation of the existing two local MKV/MP4 indicator rules, subject to the engine time budget; it is narrow triage, not comprehensive antivirus. ClamAV retains the 1.9 GB configured ceiling and its underlying 2 GB engine ceiling. Large files must remain PARTIALLY_SCANNED when YARA passes and ClamAV skips them.
+
+Executable/script content is flagged separately as POLICY_VIOLATION using headers and filename extensions. Detection does not execute, move, delete or quarantine the file. qBittorrent 5.2.4 now has excluded file names enabled for *.exe, *.dll, *.scr, *.com, *.msi, *.bat, *.cmd, *.ps1, *.vbs, *.js, *.lnk, *.hta, *.sh and *.jar. The setting was saved and verified by reopening Downloads options. Existing downloads and media were retained. Filename exclusion is a prevention layer, not a malware verdict.
+
+## Recovery point
+
+Stopped snapshot on Pi: `/var/backups/four-security/20261022-144629-1792694789710777539`.
+It contains the prior `/etc/four-security`, `/var/lib/four-security`, `/var/lib/clamav`, `.env`, deployment manifest, and `release-before-fixes.tar.gz`. Runtime credentials remain on the Pi and are not copied to this source project. Existing scan events and runs are retained; no prior result is promoted to clean.
+
+Rollback: stop `four-security.service`, run `python3 /opt/four-security/suite rollback /var/backups/four-security/20261022-144629-1792694789710777539`, then restore the matching source archive with `tar --no-same-owner -xzf /var/backups/four-security/20261022-144629-1792694789710777539/release-before-fixes.tar.gz -C /opt/four-security`. Check ownership/configuration and start `four-security.service`; its previous image ID and settings are restored from the snapshot. Rollback first snapshots the newer runtime state, preserving post-update history.
+
+## Verification
+
+Deployment and live acceptance completed October 22, 2026. Final post-NAS-reboot verification is recorded in POST-REBOOT-VERIFICATION-2026-10-22.md. Linux regression suite: 64 tests, 63 passed and one skipped (cross-project frontend check; frontend tests run separately). The suite includes unchanged discovery preservation, changed-file handling, error backoff, fair batch selection, per-file time admission, large-file configuration, inherited descriptor client invocation, executable headers disguised as media, and continuation at 30/60 seconds with a six-hour baseline.
+
+Live acceptance evidence: the daemon detected the harmless EICAR signature in 0.074 seconds; a real media file completed CLEAN with both engines in 477.22 seconds. A real full discovery pass preserved CLEAN and POLICY_VIOLATION rows including evidence and attempts. YARA-X scanned the entire 19,902,640,891-byte Avatar MKV in 872.675 seconds with no loaded-rule matches; its comparison container exited 0 without OOM. Classic YARA had reached its earlier 1,200-second fixed timeout on the same file. The final adapter also passed clean, embedded PE, script-indicator, and late-PE-after-1,000,001-decoy-MZ fixtures inside the ARM64 image. This benchmark ran against a read-only media mount with one CPU / 1000 MiB and no network, separate from production history.
+
+Final scanner image: sha256:3914346b890ace60a1a0ae6676bf7219d26e0bc702afe641163a11e497b63676. A NAS reboot interrupted run 40 with Host is down; media/report CIFS mounts recovered, and publishing resumed. Runtime failures such as mount/preflight outages now retry after five minutes instead of waiting six hours. Individual file-engine errors retain their separate six-hour backoff. Regression tests verify both schedules. Snapshot before this follow-up: /var/backups/four-security/20261022-192924-1792711764424737982, including release-before-outage-retry.tar.gz. All scan history remains retained.

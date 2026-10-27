@@ -6,8 +6,8 @@ import resource
 import struct
 import subprocess
 import time
-p = Path('/var/lib/four-securitycenter/large-validation.bin')
-rules = '/opt/four-securitycenter/rules/media-payload-indicators.yar'
+p = Path('/var/lib/four-security/large-validation.bin')
+rules = '/opt/four-security/rules/media-payload-indicators.yar'
 results = {}
 def fixture(tail):
     with p.open('wb') as f:

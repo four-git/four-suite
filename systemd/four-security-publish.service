@@ -1,0 +1,27 @@
+[Unit]
+Description=Publish four-security JSON to NAS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=997
+Group=983
+ExecStart=/usr/bin/python3 /opt/four-security/src/publish_reports.py --config /etc/four-security/publisher.json
+TimeoutStartSec=25s
+TimeoutStopSec=5s
+KillMode=control-group
+Nice=15
+MemoryMax=192M
+CPUQuota=25%
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/mnt/four-security/reports
+ReadOnlyPaths=/var/lib/four-security /etc/four-security
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+UMask=0027

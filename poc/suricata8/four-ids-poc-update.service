@@ -1,0 +1,12 @@
+[Unit]
+Description=Validate and refresh Suricata POC ET Open rules
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /opt/four-security/poc/suricata8/update-rules.sh
+TimeoutStartSec=20min
+Nice=10
+UMask=0022

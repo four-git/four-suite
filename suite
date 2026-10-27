@@ -10,9 +10,9 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parent
-CONFIG = Path('/etc/four-securitycenter/scanner.json')
-BACKUPS = Path('/var/backups/four-securitycenter')
-PATHS = ('/etc/four-securitycenter', '/var/lib/four-securitycenter', '/var/lib/clamav')
+CONFIG = Path('/etc/four-security/scanner.json')
+BACKUPS = Path('/var/backups/four-security')
+PATHS = ('/etc/four-security', '/var/lib/four-security', '/var/lib/clamav')
 
 
 def call(args, **kwargs):
@@ -24,10 +24,10 @@ def compose(*args):
 
 
 def check_native_jobs():
-    for unit in ('four-securitycenter-scan.timer', 'four-securitycenter-discover.timer',
-                 'four-securitycenter-report.timer', 'four-securitycenter-scan.service',
-                 'four-securitycenter-discover.service', 'four-securitycenter-report.service',
-                 'clamav-freshclam.service'):
+    units = [prefix + '-' + job + '.' + kind
+             for prefix in ('four-security', 'four-securitycenter')
+             for job in ('scan', 'discover', 'report') for kind in ('timer', 'service')]
+    for unit in (*units, 'clamav-freshclam.service'):
         if subprocess.run(['systemctl', 'is-active', '--quiet', unit], timeout=10).returncode == 0:
             raise RuntimeError('Stop native service/timer before container ownership: ' + unit)
         if unit.endswith('.timer') or unit == 'clamav-freshclam.service':
@@ -39,11 +39,11 @@ def check_native_jobs():
 def preflight(render=True):
     # Importing this module performs no scans or database writes.
     cfg = json.loads(CONFIG.read_text())
-    if cfg['mount'] != '/mnt/four-securitycenter/downloads':
+    if cfg['mount'] != '/mnt/four-security/downloads':
         raise RuntimeError('Compose NAS path and scanner configuration must match')
     call([sys.executable, '-c',
           'import json,sys; sys.path.insert(0,sys.argv[1]); '
-          'from four_securitycenter import verify_mount; '
+          'from four_security import verify_mount; '
           'verify_mount(json.load(open(sys.argv[2])))',
           str(ROOT / 'src'), str(CONFIG)], timeout=25)
     check_native_jobs()
@@ -57,8 +57,21 @@ def copy_tree(source, target):
     call(['cp', '-a', '--', str(source), str(target)], timeout=None)
 
 
+def stop_publisher():
+    if Path('/etc/systemd/system/four-security-publish.timer').exists():
+        call(['systemctl', 'stop', 'four-security-publish.timer', 'four-security-publish.service'])
+
+
+def start_publisher():
+    if Path('/etc/systemd/system/four-security-publish.timer').exists():
+        state = subprocess.run(['systemctl', 'is-enabled', '--quiet', 'four-security-publish.timer'], timeout=10)
+        if state.returncode == 0:
+            call(['systemctl', 'start', 'four-security-publish.timer'])
+
+
 def backup():
     check_native_jobs()
+    stop_publisher()
     compose('--profile', 'ids', 'stop')
     BACKUPS.mkdir(mode=0o700, parents=True, exist_ok=True)
     dest = BACKUPS / (time.strftime('%Y%m%d-%H%M%S') + '-' + str(time.time_ns()))
@@ -92,22 +105,28 @@ def main():
         preflight(render=False)
         print('Host checks passed: expected read-only CIFS mount; native jobs disabled/stopped.')
         return 0
-    if a.action in ('start', 'restart', 'doctor', 'scan', 'update'):
+    if a.action in ('start', 'restart', 'doctor', 'update'):
         preflight()
+    if a.action == 'scan':
+        # Scanner records its own engine/mount preflight failures in run history.
+        check_native_jobs()
     if a.action in ('start', 'restart'):
+        stop_publisher()
         compose('up', '-d', '--force-recreate', 'signatures', 'scanner')
+        start_publisher()
     elif a.action == 'doctor':
-        compose('exec', '-T', 'scanner', 'python3', '/opt/four-securitycenter/src/container_service.py', 'health')
+        compose('exec', '-T', 'scanner', 'python3', '/opt/four-security/src/container_service.py', 'health')
     elif a.action == 'stop':
+        stop_publisher()
         compose('--profile', 'ids', 'stop')
     elif a.action == 'status':
         compose('ps', '--all')
-        print('Coverage: narrow YARA media triage up to 8GB; ClamAV ceiling 1.9GB. Health failure means BLOCKED/degraded.')
-        compose('exec', '-T', 'scanner', 'python3', '/opt/four-securitycenter/src/container_service.py', 'health')
-        compose('exec', '-T', 'scanner', 'python3', '/opt/four-securitycenter/src/container_service.py', 'status')
+        print('Coverage: full-file YARA triage within the engine time budget; ClamAV ceiling 1.9GB. Executable/script policy is separate from malware detection. Health failure means BLOCKED/degraded.')
+        compose('exec', '-T', 'scanner', 'python3', '/opt/four-security/src/container_service.py', 'health')
+        compose('exec', '-T', 'scanner', 'python3', '/opt/four-security/src/container_service.py', 'status')
     elif a.action in ('scan', 'alerts'):
         extra = (['--dry-run'] if a.dry_run else []) + (['--target', a.target] if a.target else [])
-        compose('exec', '-T', 'scanner', 'python3', '/opt/four-securitycenter/src/container_service.py', a.action, *extra)
+        compose('exec', '-T', 'scanner', 'python3', '/opt/four-security/src/container_service.py', a.action, *extra)
     elif a.action == 'logs':
         compose('--profile', 'ids', 'logs', '--tail', '100')
     elif a.action == 'backup':
@@ -125,7 +144,7 @@ def main():
             raise RuntimeError('Snapshot must be a direct child of ' + str(BACKUPS))
         if source.stat().st_uid != 0 or source.stat().st_mode & 0o022:
             raise RuntimeError('Snapshot must be root-owned and not writable by group/others')
-        for name in ('etc/four-securitycenter', 'var/lib/four-securitycenter', 'var/lib/clamav', 'suite.env', 'deployment-manifest.json'):
+        for name in ('etc/four-security', 'var/lib/four-security', 'var/lib/clamav', 'suite.env', 'deployment-manifest.json'):
             if not (source / name).exists():
                 raise RuntimeError('Incomplete snapshot: ' + name)
         backup()

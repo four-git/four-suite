@@ -3,6 +3,7 @@ import os
 import shutil
 import subprocess
 import unittest
+import tempfile
 
 
 ROOT = Path(__file__).parents[1]
@@ -52,7 +53,15 @@ done
 export -f source uname dpkg getent dpkg-query pgrep findmnt command grep systemctl
 bash scripts/pre-req.sh --dry-run --migrate-native
 '''
-        result = subprocess.run([BASH, '-c', harness], cwd=ROOT, capture_output=True, text=True)
+        # Do not let the real Pi's still-existing legacy config affect this
+        # simulated fresh-host inventory. Change only that path in a temp copy.
+        with tempfile.TemporaryDirectory() as directory:
+            fixture_root = Path(directory)
+            (fixture_root / 'scripts').mkdir()
+            script = (ROOT / 'scripts/pre-req.sh').read_text().replace(
+                '/etc/four-securitycenter', str(fixture_root / 'absent-legacy-config'))
+            (fixture_root / 'scripts/pre-req.sh').write_text(script)
+            result = subprocess.run([BASH, '-c', harness], cwd=fixture_root, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn('MUTATION CALLED', result.stderr)
         self.assertIn('docker-ce', result.stdout)

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Suricata POC rule refresh
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 America/New_York
+RandomizedDelaySec=30min
+Persistent=true
+Unit=four-ids-poc-update.service
+
+[Install]
+WantedBy=timers.target

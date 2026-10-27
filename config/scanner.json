@@ -1,21 +1,38 @@
 {
-  "mount": "/mnt/four-securitycenter/downloads",
+  "mount": "/mnt/four-security/downloads",
   "source": "//192.168.4.46/data",
-  "expected_dirs": ["media", "torrents/complete"],
-  "roots": ["torrents/complete", "media"],
-  "rules": "/opt/four-securitycenter/rules/media-payload-indicators.yar",
+  "expected_dirs": [
+    "media",
+    "torrents/complete"
+  ],
+  "roots": [
+    "torrents/complete",
+    "media"
+  ],
+  "rules": "/opt/four-security/rules/media-payload-indicators.yar",
   "rules_description": "Two local MKV/MP4 suspicious-payload triage rules; narrow coverage, not full antivirus",
   "clam_database": "/var/lib/clamav",
-  "state_db": "/var/lib/four-securitycenter/scans.sqlite3",
-  "lock_file": "/var/lib/four-securitycenter/scan.lock",
+  "state_db": "/var/lib/four-security/scans.sqlite3",
+  "lock_file": "/var/lib/four-security/scan.lock",
   "stable_seconds": 900,
   "signature_max_age_hours": 72,
   "clam_max_bytes": 1900000000,
   "clam_scan_bytes": 1900000000,
-  "clam_scan_time_ms": 240000,
-  "yara_max_bytes": 8000000000,
-  "engine_timeout": 360,
+  "clam_scan_time_ms": 600000,
+  "yara_max_bytes": 0,
+  "yara_mode": "yara-x",
+  "engine_timeout": 1200,
+  "yara_seconds_per_gib": 120,
   "max_runtime_seconds": 900,
   "max_files_per_run": 2000,
-  "retention_days": 30
+  "stale_scan_seconds": 86400,
+  "retention_days": 30,
+  "clam_mode": "daemon",
+  "clam_socket": "/tmp/four-security-clamd.sock",
+  "media_policy": true,
+  "continuation_seconds": 30,
+  "retry_seconds": 21600,
+  "failure_retry_seconds": 300,
+  "scan_on_startup": true,
+  "max_discovery_files": 100000
 }

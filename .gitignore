@@ -20,6 +20,7 @@ __pycache__/
 package-versions.txt
 .pytest_cache/
 .venv/
+dist/
 
 # Malware test artifacts / samples and data dumps
 samples/

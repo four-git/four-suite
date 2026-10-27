@@ -32,13 +32,17 @@ trap 'echo "[BLOCKED] Failed at line $LINENO. Fix the reported error, then rerun
 source /etc/os-release
 [[ $ID == debian && $VERSION_ID == 13 && $(uname -m) == aarch64 && $(dpkg --print-architecture) == arm64 ]] || die 'Debian 13 / aarch64 / arm64 is required.'
 (( ! mount_only || ! migrate )) || die '--mount and --migrate-native are separate steps.'
+# Existing legacy installations must use the journaled rename migration first.
+if [[ -d /etc/four-securitycenter && ! -f /opt/four-security/.migration-snapshot ]]; then
+  die 'Legacy configuration exists. Follow docs/DEPLOYMENT.md and run the rename migrator first.'
+fi
 log "Host: $(hostname); Debian $VERSION_ID; ARM64. Dry-run=$dry_run"
 df -h / /var
 free -h
 
-mount_path=/mnt/four-securitycenter/downloads
+mount_path=/mnt/four-security/downloads
 nas_source=//192.168.4.46/data
-credentials=/etc/four-securitycenter/smb.credentials
+credentials=/etc/four-security/smb.credentials
 
 if (( mount_only )); then
   log 'Mount and verify the existing NAS configuration (no package or ownership changes)'
@@ -64,13 +68,13 @@ if (( mount_only )); then
     timeout --kill-after=5s 30s python3 - "$PWD/src" <<'PY'
 import sys
 sys.path.insert(0, sys.argv[1])
-from four_securitycenter import verify_mount
-verify_mount({'mount': '/mnt/four-securitycenter/downloads', 'source': '//192.168.4.46/data',
+from four_security import verify_mount
+verify_mount({'mount': '/mnt/four-security/downloads', 'source': '//192.168.4.46/data',
               'expected_dirs': ['media', 'torrents/complete']})
 PY
     timeout --kill-after=5s 30s setpriv --reuid=997 --regid=983 --clear-groups python3 - <<'PY'
 import os
-for path in ('/mnt/four-securitycenter/downloads/media', '/mnt/four-securitycenter/downloads/torrents/complete'):
+for path in ('/mnt/four-security/downloads/media', '/mnt/four-security/downloads/torrents/complete'):
     if not os.access(path, os.R_OK | os.X_OK):
         raise SystemExit('Scanner cannot read/traverse: ' + path)
 PY
@@ -88,17 +92,17 @@ account=$(getent passwd 997 || true)
 group=$(getent group 983 || true)
 if [[ -n $account ]]; then
   IFS=: read -r account_name _ _ account_gid _ <<< "$account"
-  [[ $account_gid == 983 && ( $account_name == scanner || $account_name == four-securitycenter ) ]] || die 'UID 997 is used by an incompatible account. No account will be reassigned.'
+  [[ $account_gid == 983 && ( $account_name == scanner || $account_name == four-security ) ]] || die 'UID 997 is used by an incompatible account. No account will be reassigned.'
 else
   ! getent passwd scanner >/dev/null || die 'Name scanner already exists with another UID.'
 fi
 if [[ -n $group ]]; then
   group_name=${group%%:*}
-  [[ $group_name == scanner || $group_name == four-securitycenter ]] || die 'GID 983 belongs to an unrelated group.'
+  [[ $group_name == scanner || $group_name == four-security ]] || die 'GID 983 belongs to an unrelated group.'
 else
   ! getent group scanner >/dev/null || die 'Group scanner already exists with another GID.'
 fi
-for path in /etc/four-securitycenter /var/lib/four-securitycenter /var/lib/clamav "$mount_path" "$credentials" /etc/four-securitycenter/scanner.json; do
+for path in /etc/four-security /var/lib/four-security /var/lib/clamav "$mount_path" "$credentials" /etc/four-security/scanner.json; do
   [[ ! -L $path ]] || die "Refusing a symlink at $path"
 done
 if ! awk -v target="$mount_path" -v source="$nas_source" '
@@ -109,8 +113,8 @@ if ! awk -v target="$mount_path" -v source="$nas_source" '
   die 'Existing fstab entry is duplicated or differs from the expected read-only NAS share. Review /etc/fstab.'
 fi
 
-units=(four-securitycenter-scan.timer four-securitycenter-discover.timer four-securitycenter-report.timer
-       four-securitycenter-scan.service four-securitycenter-discover.service four-securitycenter-report.service clamav-freshclam.service)
+units=(four-security-scan.timer four-security-discover.timer four-security-report.timer
+       four-security-scan.service four-security-discover.service four-security-report.service clamav-freshclam.service)
 native_present=0
 for unit in "${units[@]}"; do
   if systemctl is-active --quiet "$unit" || systemctl is-enabled --quiet "$unit" 2>/dev/null; then
@@ -121,7 +125,7 @@ done
 (( ! native_present || migrate )) || die 'Rerun with --migrate-native to stop native jobs and snapshot their data first.'
 if command -v docker >/dev/null; then
   # Do not change state/permissions underneath a running suite.
-  running=$(docker ps --filter label=com.docker.compose.project=four-securitycenter --format '{{.Names}}') || die 'Docker is installed but its daemon is unavailable; start it and rerun.'
+  running=$(docker ps --filter label=com.docker.compose.project=four-security --format '{{.Names}}') || die 'Docker is installed but its daemon is unavailable; start it and rerun.'
   [[ -z $running ]] || die 'Suite containers are running. Stop the suite before host preparation.'
   docker compose version >/dev/null || die 'Existing Docker lacks Compose v2. Install its matching Compose plugin, then rerun.'
   have_docker=1
@@ -139,11 +143,11 @@ fi
 
 log 'Snapshot the existing native configuration and state before migration'
 needs_snapshot=$migrate
-for path in /etc/four-securitycenter /var/lib/four-securitycenter /var/lib/clamav; do
+for path in /etc/four-security /var/lib/four-security /var/lib/clamav; do
   if [[ -e $path ]]; then needs_snapshot=1; fi
 done
 if (( needs_snapshot )); then
-  native_backup="/var/backups/four-securitycenter-native-$(date +%Y%m%d-%H%M%S)-$$"
+  native_backup="/var/backups/four-security-native-$(date +%Y%m%d-%H%M%S)-$$"
   run install -d -o root -g root -m 0700 "$native_backup"
   if (( ! dry_run )); then
     for unit in "${units[@]}"; do
@@ -164,7 +168,7 @@ if (( needs_snapshot )); then
     if (( ! dry_run )); then die 'Scanner/updater processes remain. Stop their owning jobs and rerun.'; fi
     echo '  Dry-run: remaining processes must be gone before the actual snapshot.'
   fi
-  for path in /etc/four-securitycenter /var/lib/four-securitycenter /var/lib/clamav /etc/fstab; do
+  for path in /etc/four-security /var/lib/four-security /var/lib/clamav /etc/fstab; do
     if [[ -e $path ]]; then run cp -a --parents "$path" "$native_backup/"; fi
   done
   log "Native snapshot (includes credentials; keep root-only): $native_backup"
@@ -203,18 +207,18 @@ log 'Create/reuse the scanner service identity: UID 997, primary GID 983'
 if [[ -z $group ]]; then run groupadd --system --gid 983 scanner; fi
 if [[ -z $account ]]; then run useradd --system --uid 997 --gid 983 --no-create-home --shell /usr/sbin/nologin scanner; fi
 log 'Prepare local configuration and writable state; never chown the NAS'
-run install -d -o root -g 983 -m 0750 /etc/four-securitycenter
-for path in /var/lib/four-securitycenter /var/lib/clamav; do
+run install -d -o root -g 983 -m 0750 /etc/four-security
+for path in /var/lib/four-security /var/lib/clamav; do
   run install -d -m 0750 "$path"
   run chown -R --no-dereference 997:983 "$path"
   run chmod -R u+rwX "$path"
 done
-if [[ ! -e /etc/four-securitycenter/scanner.json ]]; then
-  run install -o root -g 983 -m 0640 config/scanner.json /etc/four-securitycenter/scanner.json
+if [[ ! -e /etc/four-security/scanner.json ]]; then
+  run install -o root -g 983 -m 0640 config/scanner.json /etc/four-security/scanner.json
 else
   log 'Keep existing scanner.json; grant the service group read access'
-  run chown root:983 /etc/four-securitycenter/scanner.json
-  run chmod 0640 /etc/four-securitycenter/scanner.json
+  run chown root:983 /etc/four-security/scanner.json
+  run chmod 0640 /etc/four-security/scanner.json
 fi
 if [[ ! -e $credentials ]]; then
   echo "  + create root-only credential template: $credentials (password is never echoed)"
@@ -233,9 +237,9 @@ else
   log 'Existing mount point left untouched (no chmod/chown on the NAS)'
 fi
 if ! awk -v target="$mount_path" '$1 !~ /^#/ && $2 == target { found=1 } END { exit !found }' /etc/fstab; then
-  echo '  + append one read-only CIFS entry to /etc/fstab (original saved as fstab.four-securitycenter.TIMESTAMP.PID)'
+  echo '  + append one read-only CIFS entry to /etc/fstab (original saved as fstab.four-security.TIMESTAMP.PID)'
   if (( ! dry_run )); then
-    cp -a /etc/fstab "/etc/fstab.four-securitycenter.$(date +%Y%m%d-%H%M%S).$$"
+    cp -a /etc/fstab "/etc/fstab.four-security.$(date +%Y%m%d-%H%M%S).$$"
     printf '\n%s %s cifs credentials=%s,ro,vers=3.0,uid=997,gid=983,file_mode=0440,dir_mode=0550,nosuid,nodev,noexec,_netdev,nofail,x-systemd.automount 0 0\n' "$nas_source" "$mount_path" "$credentials" >> /etc/fstab
   fi
 else

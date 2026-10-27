@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0c0f14"><meta name="description" content="four-nas application launcher">
+<title>four-nas</title>
+<link rel="icon" href="assets/jellyfin.svg" type="image/svg+xml"><link rel="stylesheet" href="styles.css?v=20261026-ids1">
+</head>
+<body>
+<header><a href="./" class="wordmark">four-nas</a><span class="header-label">AT HOME / 192.168.4.46</span></header>
+<main>
+<nav class="apps" aria-label="NAS applications">
+<a href="http://192.168.4.46:8096/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/jellyfin.svg" alt=""></span><strong>Jellyfin</strong><span class="app-description">Watch movies and shows</span><span class="port">:8096 <span>↗</span></span></a>
+<a href="http://192.168.4.46:7878/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/radarr.svg" alt=""></span><strong>Radarr</strong><span class="app-description">Manage movies</span><span class="port">:7878 <span>↗</span></span></a>
+<a href="http://192.168.4.46:8989/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/sonarr.svg" alt=""></span><strong>Sonarr</strong><span class="app-description">Manage TV shows</span><span class="port">:8989 <span>↗</span></span></a>
+<a href="http://192.168.4.46:9696/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/prowlarr.svg" alt=""></span><strong>Prowlarr</strong><span class="app-description">Manage search sources</span><span class="port">:9696 <span>↗</span></span></a>
+<a href="http://192.168.4.46:8085/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/qbittorrent.svg" alt=""></span><strong>qBittorrent</strong><span class="app-description">Manage downloads</span><span class="port">:8085 <span>↗</span></span></a>
+<a href="https://192.168.4.46:5001/" target="_blank" rel="noopener noreferrer"><span class="icon"><img src="assets/synology.svg" alt=""></span><strong>Synology DSM</strong><span class="app-description">Manage the NAS</span><span class="port">:5001 <span>↗</span></span></a>
+</nav>
+<section class="status-section security-section" aria-labelledby="security-title">
+<div class="status-heading"><h2 id="security-title">four-security</h2><span id="security-state" role="status">Loading scan report…</span></div>
+<p id="security-message">Connecting to the NAS report.</p>
+<div class="metrics">
+<div><span class="metric-label">LAST COMPLETED SCAN</span><strong id="security-last">—</strong><small id="security-duration">No completed scan recorded</small></div>
+<div><span class="metric-label">FILES SCANNED</span><strong id="security-files">—</strong><small id="security-cached">Actual attempts in the last completed run</small></div>
+<div><span class="metric-label">RECORDED ISSUES</span><strong id="security-issues">—</strong><small id="security-warnings">Awaiting report</small></div>
+</div>
+<p class="security-note" id="security-progress"></p>
+<p class="security-note" id="security-published"></p>
+<details id="security-findings"><summary id="security-findings-title">Findings and coverage</summary><div id="security-finding-list"></div><button id="security-more" type="button" hidden>Show more</button></details>
+<details><summary>Recent scans and file counts</summary><p id="security-counts"></p><div class="security-history-wrap"><table class="security-history"><thead><tr><th scope="col">Started</th><th scope="col">Result</th><th scope="col">Duration</th><th scope="col">Scanned</th></tr></thead><tbody id="security-history"></tbody></table></div><p id="security-retention" class="security-note"></p></details>
+<p class="security-note" id="security-coverage">Bounded scans do not establish full-library coverage. YARA matches require review.</p>
+<noscript><p>Enable JavaScript to display scan results.</p></noscript>
+</section>
+<section class="status-section security-section ids-section" aria-labelledby="ids-title">
+<div class="status-heading"><h2 id="ids-title">Network alerts · Suricata</h2><span id="ids-state" role="status" aria-live="polite">Loading sensor report…</span></div>
+<p id="ids-message">Dashboard alerts only. No email or phone notifications are configured.</p>
+<div class="metrics">
+<div><span class="metric-label">SENSOR</span><strong id="ids-health">—</strong><small id="ids-freshness">Awaiting sensor statistics</small></div>
+<div><span class="metric-label">REVIEW · LAST 24 HOURS</span><strong id="ids-count">—</strong><small id="ids-severity">Severity is a rule priority, not proof of compromise</small></div>
+<div><span class="metric-label">CAPTURE · CURRENT RUN</span><strong id="ids-packets">—</strong><small id="ids-drops">Awaiting capture counters</small></div>
+</div>
+<p class="security-note" id="ids-scope">Pi eth0 traffic; NAS SMB file transfers excluded. Whole-network visibility is unverified.</p>
+<details open><summary id="ids-alerts-title">Recent network detections</summary><div id="ids-alert-list"></div><button id="ids-more" type="button" hidden>Show more</button></details>
+<p class="security-note" id="ids-published">Waiting for the report. Suricata records alerts and does not block traffic or modify files.</p>
+</section>
+</main>
+<footer><span>four-nas <span class="separator">/</span> 6 shortcuts</span><span>HOME NETWORK</span></footer>
+
+<script src="security.js?v=20261026-ids1" defer></script>
+<script src="ids.js?v=20261026-ids1" defer></script>
+</body></html>

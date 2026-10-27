@@ -1,6 +1,6 @@
 # Docker suite: setup and operation
 
-This is the current installation guide. Run host commands on **four-securitycenter, Debian 13 ARM64, Raspberry Pi 4 / 4 GB**. On October 19, 2026, the ARM64 image was built and container health checks passed on the Pi, including the read-only NAS mount and scanner engines. Full scan, resource and recovery acceptance remains in progress.
+For the existing installation rename and NAS integration, start with [environment setup](ENVIRONMENT-SETUP.md), then [deployment](DEPLOYMENT.md). This guide covers fresh Docker installation and general operation. Run host commands on **four-security, Debian 13 ARM64, Raspberry Pi 4 / 4 GB**. On October 19, 2026, the prior ARM64 image was built and container health checks passed on the Pi, including the read-only NAS mount and scanner engines. The renamed release requires a new image build and live acceptance.
 
 The setup is: **copy repo → prepare host → verify NAS mount → build image → start → validate**. No automatic scan or IDS is enabled during installation.
 
@@ -10,7 +10,7 @@ The setup is: **copy repo → prepare host → verify NAS mount → build image 
 - Internet access from the Pi for Debian/Docker packages, image downloads and ClamAV signatures.
 - Free local space for Docker images, signatures and a complete copy of existing state/signatures for backup. `pre-req.sh` prints disk and RAM availability; check capacity before applying it.
 - A DSM account with **read-only** access to `//192.168.4.46/data`, including `media` and `torrents/complete`. Creating that account and setting its DSM permissions is manual.
-- UID **997** and GID **983** available, or the existing compatible `scanner` / `four-securitycenter` identity. Scripts stop on conflicting identities rather than reassigning accounts.
+- UID **997** and GID **983** available, or the existing compatible `scanner` / `four-security` identity. Scripts stop on conflicting identities rather than reassigning accounts.
 
 ### What the scripts prepare
 
@@ -19,12 +19,12 @@ The setup is: **copy repo → prepare host → verify NAS mount → build image 
 | Host dependencies | CA certificates, curl, GnuPG, Python 3, util-linux, cifs-utils |
 | Docker | Official Debian apt repository, Engine, Buildx and Compose plugin; reuse a working existing installation |
 | Service identity | Non-login `scanner`, UID 997 / GID 983; reuse compatible native identity |
-| Configuration | `/etc/four-securitycenter`, root:983, 0750; preserve existing `scanner.json`, set root:983 / 0640 |
-| NAS credentials | `/etc/four-securitycenter/smb.credentials`, root:root / 0600; preserve existing contents |
-| Scanner state | `/var/lib/four-securitycenter`, UID 997 / GID 983; preserve SQLite history |
+| Configuration | `/etc/four-security`, root:983, 0750; preserve existing `scanner.json`, set root:983 / 0640 |
+| NAS credentials | `/etc/four-security/smb.credentials`, root:root / 0600; preserve existing contents |
+| Scanner state | `/var/lib/four-security`, UID 997 / GID 983; preserve SQLite history |
 | Signatures | `/var/lib/clamav`, UID 997 / GID 983 |
-| NAS mount | `/mnt/four-securitycenter/downloads`; one read-only CIFS entry in `/etc/fstab` |
-| Native migration backup | `/var/backups/four-securitycenter-native-TIMESTAMP-PID`, root-only, original ownership retained |
+| NAS mount | `/mnt/four-security/downloads`; one read-only CIFS entry in `/etc/fstab` |
+| Native migration backup | `/var/backups/four-security-native-TIMESTAMP-PID`, root-only, original ownership retained |
 | Container engines | ClamAV, FreshClam, YARA and optional Suricata installed in the image |
 
 Scripts print `[pre-req]` / `[install]` progress and commands. Stop at any `[BLOCKED]` message. `--dry-run` inspects the host and previews changes without applying them; it cannot guarantee that a later package download/build will succeed. Reruns preserve credentials/configuration, reuse accounts and avoid duplicate mount entries. Preparation takes another snapshot when existing data is present.
@@ -36,31 +36,31 @@ Scripts print `[pre-req]` / `[install]` progress and commands. Stop at any `[BLO
 ```powershell
 $piLogin = 'YOUR_PI_USER@192.168.4.51'
 $suiteRepo = (Get-Location).Path
-$suiteArchive = Join-Path $env:TEMP 'four-securitycenter-suite.tar.gz'
+$suiteArchive = Join-Path $env:TEMP 'four-security-suite.tar.gz'
 tar -czf $suiteArchive -C $suiteRepo Dockerfile .dockerignore compose.yaml suite deployment-manifest.json README.md config docs rules scripts src systemd tests
-scp $suiteArchive "${piLogin}:/tmp/four-securitycenter-suite.tar.gz"
+scp $suiteArchive "${piLogin}:/tmp/four-security-suite.tar.gz"
 ssh $piLogin
 ```
 
-All remaining blocks run in **Bash on the Pi**. Use `/opt/four-securitycenter` for the host checkout. If cloning published source, use `sudo git clone https://github.com/four-git/four-securitycenter.git /opt/four-securitycenter` only when the target does not already exist; unpublished desktop changes require the archive above.
+All remaining blocks run in **Bash on the Pi**. Use `/opt/four-security` for the host checkout. The remote repository remains `https://github.com/four-git/four-securitycenter.git` until separately renamed; do not assume a new GitHub URL exists. Unpublished desktop changes require the archive above. Existing deployments must use [deployment](DEPLOYMENT.md) rather than unpack over a running checkout.
 
 For an already deployed Docker suite, use the update procedure below before replacing source. Do not unpack over a running deployment. For the first Docker installation, preserve any existing native source directory before extracting the archive:
 
 ```bash
-if sudo test -d /opt/four-securitycenter; then
-  suiteSourceBackup="/var/backups/four-securitycenter-source-$(date +%Y%m%d-%H%M%S)-$$"
+if sudo test -d /opt/four-security; then
+  suiteSourceBackup="/var/backups/four-security-source-$(date +%Y%m%d-%H%M%S)-$$"
   sudo install -d -m 0700 "$suiteSourceBackup"
-  sudo cp -a /opt/four-securitycenter "$suiteSourceBackup/"
+  sudo cp -a /opt/four-security "$suiteSourceBackup/"
   printf 'Source backup: %s\n' "$suiteSourceBackup"
 fi
-sudo install -d -m 0755 /opt/four-securitycenter
-sudo tar --no-same-owner -xzf /tmp/four-securitycenter-suite.tar.gz -C /opt/four-securitycenter
-sudo chown -R root:root /opt/four-securitycenter
-cd /opt/four-securitycenter
+sudo install -d -m 0755 /opt/four-security
+sudo tar --no-same-owner -xzf /tmp/four-security-suite.tar.gz -C /opt/four-security
+sudo chown -R root:root /opt/four-security
+cd /opt/four-security
 sudo chmod +x suite scripts/*.sh
 ```
 
-Keep the printed source backup path alongside the configuration/data snapshot created in the next step. If you cloned instead, skip archive extraction and run `cd /opt/four-securitycenter` before continuing.
+Keep the printed source backup path alongside the configuration/data snapshot created in the next step. If you cloned instead, skip archive extraction and run `cd /opt/four-security` before continuing.
 
 ## 2. Prepare the host
 
@@ -82,7 +82,7 @@ The script installs Docker using its [official Debian apt repository](https://do
 If credentials already exist and work, keep them. Otherwise edit the generated root-only template:
 
 ```bash
-sudoedit /etc/four-securitycenter/smb.credentials
+sudoedit /etc/four-security/smb.credentials
 ```
 
 Replace `CHANGE_ME` with the DSM read-only account values:
@@ -141,15 +141,15 @@ If doctor fails, inspect `suite logs` and resolve it before scanning. Health mea
 Choose a known benign file and replace the example before running:
 
 ```bash
-sudo ./suite scan --target '/mnt/four-securitycenter/downloads/media/REPLACE_WITH_EXISTING_FILE.mkv'
+sudo ./suite scan --target '/mnt/four-security/downloads/media/REPLACE_WITH_EXISTING_FILE.mkv'
 sudo ./suite alerts
 ```
 
-A newly observed file can remain `PENDING` for the configured 900-second stability period. Run the same command again after 15 minutes. ClamAV is limited to the configured 1.9 GB; YARA provides only two narrow MKV/MP4 payload triage rules up to 8 GB. Large YARA-only files are partially scanned. See [rule coverage](RULE-COVERAGE.md).
+A newly observed file can remain `PENDING` for the configured 900-second stability period. Run the same command again after 15 minutes. ClamAV is limited to the configured 1.9 GB; YARA evaluates full files with two narrow MKV/MP4 payload triage rules, with no application size cap and a per-engine time budget. Large YARA-only files are partially scanned. See [rule coverage](RULE-COVERAGE.md).
 
 ## Everyday commands
 
-Run from `/opt/four-securitycenter`:
+Run from `/opt/four-security`:
 
 | Action | Command |
 |---|---|
@@ -176,28 +176,27 @@ Before enabling unattended operation, record results on the Pi:
 - Test NAS unavailable/stale mount, unmount/remount, container recreation and reboot. Failures must produce blocked/unhealthy results.
 - Test snapshot restoration and native recovery before relying on either.
 
-### Install the four-securitycenter service
+### Install the four-security service
 
-The host service is named **`four-securitycenter.service`**. It starts scanner/signature containers and stops all suite containers through the existing `suite` CLI. Installing it enables container startup at boot; scan intervals remain controlled separately by `.env`.
+The host service is named **`four-security.service`**. It starts scanner/signature containers and stops all suite containers through the existing `suite` CLI. Installing it enables container startup at boot; scan intervals remain controlled separately by `.env`.
 
-After acceptance, install it with the following block. The block also handles an existing `four-securitycenter-suite.service`: disable/stop that old unit before starting the new one. The subshell stops at the first failure. A brief container stop/start is expected; data and settings are preserved. No image rebuild is needed for this service rename.
+After acceptance, install it with the following block. The block also handles an existing `four-security-suite.service`: disable/stop that old unit before starting the new one. The subshell stops at the first failure. A brief container stop/start is expected; data and settings are preserved. No image rebuild is needed for this service rename.
 
 ```bash
 (
   set -e
-  cd /opt/four-securitycenter
-  sudo git pull --ff-only
+  cd /opt/four-security
 
-  if sudo systemctl cat four-securitycenter-suite.service >/dev/null 2>&1; then
-    sudo systemctl disable --now four-securitycenter-suite.service
+  if sudo systemctl cat four-security-suite.service >/dev/null 2>&1; then
+    sudo systemctl disable --now four-security-suite.service
   fi
 
   sudo ./suite stop
-  sudo install -m 0644 systemd/four-securitycenter.service /etc/systemd/system/four-securitycenter.service
+  sudo install -m 0644 systemd/four-security.service /etc/systemd/system/four-security.service
   sudo systemctl daemon-reload
-  sudo systemctl enable four-securitycenter.service
-  sudo systemctl restart four-securitycenter.service
-  sudo systemctl status four-securitycenter.service --no-pager
+  sudo systemctl enable four-security.service
+  sudo systemctl restart four-security.service
+  sudo systemctl status four-security.service --no-pager
   sudo ./suite doctor
 )
 ```
@@ -206,25 +205,25 @@ Once installed, use systemd for routine lifecycle changes so its state stays in 
 
 | Action | Command |
 |---|---|
-| Start | `sudo systemctl start four-securitycenter` |
-| Stop | `sudo systemctl stop four-securitycenter` |
-| Restart / recreate containers after a verified NAS remount | `sudo systemctl restart four-securitycenter` |
-| Service status | `sudo systemctl status four-securitycenter --no-pager` |
-| Enable startup at boot | `sudo systemctl enable four-securitycenter` |
-| Disable startup and stop now | `sudo systemctl disable --now four-securitycenter` |
-| Host service logs | `sudo journalctl -u four-securitycenter -n 100 --no-pager` |
-| Live container prerequisites | `sudo /opt/four-securitycenter/suite doctor` |
+| Start | `sudo systemctl start four-security` |
+| Stop | `sudo systemctl stop four-security` |
+| Restart / recreate containers after a verified NAS remount | `sudo systemctl restart four-security` |
+| Service status | `sudo systemctl status four-security --no-pager` |
+| Enable startup at boot | `sudo systemctl enable four-security` |
+| Disable startup and stop now | `sudo systemctl disable --now four-security` |
+| Host service logs | `sudo journalctl -u four-security -n 100 --no-pager` |
+| Live container prerequisites | `sudo /opt/four-security/suite doctor` |
 
-`active (exited)` is expected for this oneshot unit: the launch command completed and containers run under Docker. Use doctor and `sudo /opt/four-securitycenter/suite logs` to inspect the running containers. Service startup does not wait for healthy signatures/scanner; a first signature download can take several minutes. The old unit, if present, remains installed but disabled.
+`active (exited)` is expected for this oneshot unit: the launch command completed and containers run under Docker. Use doctor and `sudo /opt/four-security/suite logs` to inspect the running containers. Service startup does not wait for healthy signatures/scanner; a first signature download can take several minutes. The old unit, if present, remains installed but disabled.
 
 ### Enable scan intervals separately
 
-Start with discovery every hour and a bounded scan every six hours on the 4 GB Pi. Discovery records file observations without running scan engines; it helps completed files satisfy the 15-minute stability policy before the next scan. Scan jobs have a configured 15-minute work budget and examine at most 2,000 candidate paths per run. This cadence does not guarantee the entire library is scanned every six hours. Watch the first runs and Jellyfin playback before increasing frequency. Unchanged files can become eligible again after signature/rule changes.
+Start with discovery every hour and a bounded scan every six hours on the 4 GB Pi. Discovery records file observations without running scan engines; it helps completed files satisfy the 15-minute stability policy before the next scan. Scan jobs admit new files for a configured 15-minute batch budget and examine at most 2,000 candidate paths per run. Admitted files retain their per-engine time budgets; YARA gets at least 20 minutes, growing by two minutes per GiB for larger files. Unfinished eligible work continues after 30 seconds; errors back off for six hours. Discovery preserves existing verdicts and evidence. This cadence does not guarantee the entire library is scanned every six hours. Watch the first runs and Jellyfin playback before increasing frequency. Unchanged files can become eligible again after signature/rule changes.
 
 Schedules are a separate opt-in. Edit `.env`, preserving `DEBIAN_IMAGE`, `SUITE_IMAGE` and other settings:
 
 ```bash
-sudoedit /opt/four-securitycenter/.env
+sudoedit /opt/four-security/.env
 ```
 
 Set these two lines (replace existing interval lines; do not add duplicates):
@@ -237,8 +236,8 @@ DISCOVER_INTERVAL_SECONDS=3600
 Apply and check the scheduler's startup log:
 
 ```bash
-sudo systemctl restart four-securitycenter.service
-cd /opt/four-securitycenter
+sudo systemctl restart four-security.service
+cd /opt/four-security
 sudo ./suite doctor
 sudo docker compose logs --tail 20 scanner
 ```
@@ -256,7 +255,7 @@ The NAS is read-only. The suite does not delete, quarantine, repair, move or blo
 Review findings and job logs regularly:
 
 ```bash
-cd /opt/four-securitycenter
+cd /opt/four-security
 sudo ./suite alerts
 sudo ./suite status
 sudo ./suite logs
@@ -269,18 +268,18 @@ sudo ./suite logs
 These operations leave containers stopped. If the boot unit is installed, stop it first:
 
 ```bash
-sudo systemctl stop four-securitycenter.service  # only if installed
+sudo systemctl stop four-security.service  # only if installed
 sudo ./suite backup
 # Or snapshot and rebuild the currently staged source:
 sudo ./suite update
 ```
 
-Save the printed snapshot path under `/var/backups/four-securitycenter`. Snapshots include credentials, config, SQLite/sidecars, signatures, `.env` and manifest, preserving numeric ownership. Keep them root-only. Updates do not fetch source or automatically advance the base digest. Stage reviewed source separately while preserving `.env`, manifest and the prior release checkout. Do not prune images needed by snapshots.
+Save the printed snapshot path under `/var/backups/four-security`. Snapshots include credentials, config, SQLite/sidecars, signatures, `.env` and manifest, preserving numeric ownership. Keep them root-only. Updates do not fetch source or automatically advance the base digest. Stage reviewed source separately while preserving `.env`, manifest and the prior release checkout. Do not prune images needed by snapshots.
 
 To restore a snapshot, replace the path with an actual saved snapshot:
 
 ```bash
-sudo ./suite rollback /var/backups/four-securitycenter/REPLACE_WITH_SNAPSHOT
+sudo ./suite rollback /var/backups/four-security/REPLACE_WITH_SNAPSHOT
 # Start through systemctl if installed; otherwise:
 sudo ./suite start
 sudo ./suite doctor
@@ -288,7 +287,7 @@ sudo ./suite doctor
 
 Rollback first snapshots the current stopped deployment, then restores data/config/image selection. It does not restore CLI/Compose/source files; retain the matching release checkout if those changed. Old image IDs must still exist locally.
 
-To return to the native installation: stop the Docker suite, disable its boot unit if installed, and use the **native** backup from preparation. With both native and container jobs stopped, move the current configuration/state/signature directories into a separate root-only recovery directory, then restore the matching directories from the native backup with `cp -a` to preserve ownership. Restore whole directories rather than overlaying SQLite files and sidecars. Also move aside the Docker checkout and restore `/opt/four-securitycenter` from the source backup saved before staging. Review fstab against `BACKUP/etc/fstab`; do not overwrite unrelated later mount changes. Restore only the unit states recorded in `unit-state.txt`. Native scan timers were previously disabled. Confirm container FreshClam is stopped before starting native FreshClam.
+To return to the native installation: stop the Docker suite, disable its boot unit if installed, and use the **native** backup from preparation. With both native and container jobs stopped, move the current configuration/state/signature directories into a separate root-only recovery directory, then restore the matching directories from the native backup with `cp -a` to preserve ownership. Restore whole directories rather than overlaying SQLite files and sidecars. Also move aside the Docker checkout and restore `/opt/four-security` from the source backup saved before staging. Review fstab against `BACKUP/etc/fstab`; do not overwrite unrelated later mount changes. Restore only the unit states recorded in `unit-state.txt`. Native scan timers were previously disabled. Confirm container FreshClam is stopped before starting native FreshClam.
 
 Uninstall: stop the suite, disable its boot unit, and run `sudo docker compose --profile ids down`. Keep configuration, state, signatures and backups unless you deliberately choose to delete them.
 
@@ -307,4 +306,4 @@ Remaining deployment checks include a disposable-file DSM server-side write-deni
 
 ## Optional Suricata: separate setup
 
-Leave it off until mirror/TAP traffic visibility is proven. Prepare host config/rules at `/etc/four-securitycenter/suricata`, writable logs at `/var/log/four-securitycenter/suricata`, log paths under `/var/log/suricata` and runtime files under `/tmp`. Set `CAPTURE_INTERFACE` in `.env`, validate configuration using the built image, then use `sudo docker compose --profile ids up -d suricata`. It alone uses host networking and capture capabilities. No claim of LAN-wide monitoring is justified without observed traffic. See [Docker bind mount behavior](https://docs.docker.com/engine/storage/bind-mounts/) for why a verified NAS remount requires scanner recreation.
+Leave it off until mirror/TAP traffic visibility is proven. Prepare host config/rules at `/etc/four-security/suricata`, writable logs at `/var/log/four-security/suricata`, log paths under `/var/log/suricata` and runtime files under `/tmp`. Set `CAPTURE_INTERFACE` in `.env`, validate configuration using the built image, then use `sudo docker compose --profile ids up -d suricata`. It alone uses host networking and capture capabilities. No claim of LAN-wide monitoring is justified without observed traffic. See [Docker bind mount behavior](https://docs.docker.com/engine/storage/bind-mounts/) for why a verified NAS remount requires scanner recreation.

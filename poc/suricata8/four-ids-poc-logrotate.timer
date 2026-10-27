@@ -1,0 +1,10 @@
+[Unit]
+Description=Check Suricata POC log sizes every 15 minutes
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+Unit=four-ids-poc-logrotate.service
+
+[Install]
+WantedBy=timers.target

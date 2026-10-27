@@ -1,9 +1,9 @@
-/var/log/four-securitycenter/*.log {
+/var/log/four-security/*.log {
     daily
     rotate 14
     size 5M
     compress
     missingok
     notifempty
-    create 0640 four-securitycenter four-securitycenter
+    create 0640 997 983
 }

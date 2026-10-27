@@ -1,0 +1,8 @@
+{
+  "scanner_config": "/etc/four-security/scanner.json",
+  "mount": "/mnt/four-security/reports",
+  "source": "//192.168.4.46/local-share/four-media/media-hub/site/data/security",
+  "output_name": "status.json",
+  "recent_runs": 20,
+  "ids_report": "/var/lib/four-security/ids-dashboard/report.json"
+}

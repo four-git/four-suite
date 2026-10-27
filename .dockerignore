@@ -1,5 +1,7 @@
 **
 !src/
 !src/*.py
+!scripts/
+!scripts/install-yara-x.py
 !config/
 !config/freshclam.conf

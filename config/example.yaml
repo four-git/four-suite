@@ -1,8 +1,8 @@
 # Illustrative configuration ONLY; no program in this repo consumes this file yet.
 # Copy to a non-Git runtime location when Codex implements the parser.
-project: four-securitycenter
+project: four-security
 pi:
-  hostname: four-securitycenter
+  hostname: four-security
   ip: 192.168.4.51
   os: Debian GNU/Linux 13 (trixie)
 nas:
@@ -10,7 +10,7 @@ nas:
   ip: 192.168.4.46
   smb_share: REPLACE_WITH_CONFIRMED_DSM_SHARE_NAME
   completed_download_subpath: REPLACE_WITH_VERIFIED_SUBPATH
-  mountpoint: /mnt/four-securitycenter/downloads
+  mountpoint: /mnt/four-security/downloads
   readonly: true
 malware:
   clamav_enabled: true

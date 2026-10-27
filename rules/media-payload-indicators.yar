@@ -5,7 +5,7 @@
 rule four_embedded_windows_executable_in_media
 {
     meta:
-        author = "four-securitycenter"
+        author = "four-security"
         description = "Valid PE header found in an MKV or MP4 container; investigate embedded executable data"
         severity = "review"
     strings:
@@ -24,7 +24,7 @@ rule four_embedded_windows_executable_in_media
 rule four_script_payload_indicators_in_media
 {
     meta:
-        author = "four-securitycenter"
+        author = "four-security"
         description = "Multiple script execution and encoded-payload indicators in MKV/MP4; review for false positives"
         severity = "review"
     strings:

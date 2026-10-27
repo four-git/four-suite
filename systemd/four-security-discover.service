@@ -1,0 +1,23 @@
+[Unit]
+Description=Discover stable NAS scan candidates without engine scans
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=997
+Group=983
+WorkingDirectory=/opt/four-security
+ExecStart=/usr/bin/python3 /opt/four-security/src/four_security.py discover
+Nice=15
+CPUQuota=25%
+MemoryMax=128M
+TimeoutStartSec=1000
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/four-security /var/log/four-security
+ReadOnlyPaths=/mnt/four-security
+UMask=0027
+StandardOutput=append:/var/log/four-security/discover.log
+StandardError=append:/var/log/four-security/discover.log

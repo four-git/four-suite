@@ -4,10 +4,10 @@ import json
 import os
 from pathlib import Path
 import time
-spec = importlib.util.spec_from_file_location('scanner', '/opt/four-securitycenter/src/four_securitycenter.py')
+spec = importlib.util.spec_from_file_location('scanner', '/opt/four-security/src/four_security.py')
 s = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(s)
-cfg = json.loads(Path('/etc/four-securitycenter/scanner.json').read_text())
+cfg = json.loads(Path('/etc/four-security/scanner.json').read_text())
 s.verify_mount(cfg)
 paths = (p for p in (Path(cfg['mount']) / 'media').rglob('*') if not p.is_symlink() and p.is_file())
 choices = [p for p in paths if 2_000_000_000 < p.stat().st_size < cfg['yara_max_bytes']]
